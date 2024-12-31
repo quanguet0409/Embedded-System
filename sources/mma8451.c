@@ -92,4 +92,13 @@ uint8_t detect_step(void)
         step_state = 1;
         prev_z = z;
         return 1;
-    } else if ((z - prev_z) < -4
+    }
+    else if ((z - prev_z) < -4000 && step_state == 1)
+    {
+        step_state = 0;
+        prev_z = z;
+    }
+
+    prev_z = z;
+    return 0;
+}

@@ -1,18 +1,3 @@
-#ifndef STEP_COUNTER_H
-#define STEP_COUNTER_H
-
-#include <stdint.h>
-
-extern volatile uint32_t step_count;
-extern volatile uint8_t is_active;
-
-void init_hardware(void);
-void toggle_counter(void);
-void reset_counter(void);
-
-#endif
-
-// step_counter.c
 #include "step_counter.h"
 #include "mma8451.h"
 #include "leds.h"

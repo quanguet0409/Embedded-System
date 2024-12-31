@@ -1,8 +1,9 @@
 #ifndef SWITCHES_H
 #define SWITCHES_H
 
+#include <stdint.h>
+
 void init_switches(void);
-void handle_sw1(void);
-void handle_sw2(void);
+void PORTC_PORTD_IRQHandler(void);
 
 #endif
