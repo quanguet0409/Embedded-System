@@ -2,18 +2,80 @@
 #include <MKL46Z4.h>
 
 static void i2c_init(void);
-static void i2c_write(uint8_t reg, uint8_t data);
-static uint8_t i2c_read(uint8_t reg);
+static void i2c_start(void);
+static void i2c_stop(void);
+static void i2c_write_byte(uint8_t data);
+static uint8_t i2c_read_byte(uint8_t ack);
+static void i2c_wait(void);
 
-void init_accelerometer(void)
+void mma8451_init(void)
 {
-    // Initialize I2C
     i2c_init();
 
-    // Configure accelerometer
-    i2c_write(CTRL_REG1, 0x00);    // Standby mode
-    i2c_write(XYZ_DATA_CFG, 0x00); // 2g range
-    i2c_write(CTRL_REG1, 0x01);    // Active mode, 800Hz
+    // Put in standby
+    i2c_start();
+    i2c_write_byte(MMA8451_ADDR << 1);
+    i2c_write_byte(REG_CTRL1);
+    i2c_write_byte(0x00);
+    i2c_stop();
+
+    // Configure XYZ_DATA_CFG for ±2g range
+    i2c_start();
+    i2c_write_byte(MMA8451_ADDR << 1);
+    i2c_write_byte(REG_XYZ_DATA_CFG);
+    i2c_write_byte(0x00);
+    i2c_stop();
+
+    // Active mode, 800Hz output
+    i2c_start();
+    i2c_write_byte(MMA8451_ADDR << 1);
+    i2c_write_byte(REG_CTRL1);
+    i2c_write_byte(0x01);
+    i2c_stop();
+}
+
+void mma8451_read_xyz(int16_t *x, int16_t *y, int16_t *z)
+{
+    uint8_t temp;
+
+    // Read X
+    i2c_start();
+    i2c_write_byte(MMA8451_ADDR << 1);
+    i2c_write_byte(REG_XHI);
+    i2c_start();
+    i2c_write_byte((MMA8451_ADDR << 1) | 1);
+    temp = i2c_read_byte(1);
+    *x = temp << 8;
+    temp = i2c_read_byte(0);
+    *x |= temp;
+    *x >>= 2;
+    i2c_stop();
+
+    // Read Y
+    i2c_start();
+    i2c_write_byte(MMA8451_ADDR << 1);
+    i2c_write_byte(REG_YHI);
+    i2c_start();
+    i2c_write_byte((MMA8451_ADDR << 1) | 1);
+    temp = i2c_read_byte(1);
+    *y = temp << 8;
+    temp = i2c_read_byte(0);
+    *y |= temp;
+    *y >>= 2;
+    i2c_stop();
+
+    // Read Z
+    i2c_start();
+    i2c_write_byte(MMA8451_ADDR << 1);
+    i2c_write_byte(REG_ZHI);
+    i2c_start();
+    i2c_write_byte((MMA8451_ADDR << 1) | 1);
+    temp = i2c_read_byte(1);
+    *z = temp << 8;
+    temp = i2c_read_byte(0);
+    *z |= temp;
+    *z >>= 2;
+    i2c_stop();
 }
 
 uint8_t detect_step(void)
@@ -22,56 +84,12 @@ uint8_t detect_step(void)
     int16_t x, y, z;
     static uint8_t step_state = 0;
 
-    read_accelerometer(&x, &y, &z);
+    mma8451_read_xyz(&x, &y, &z);
 
-    // Simple step detection algorithm
-    if ((z - prev_z) > 1000 && step_state == 0)
+    // Step detection algorithm
+    if ((z - prev_z) > 4000 && step_state == 0)
     {
         step_state = 1;
         prev_z = z;
         return 1;
-    }
-    else if ((z - prev_z) < -1000)
-    {
-        step_state = 0;
-    }
-
-    prev_z = z;
-    return 0;
-}
-
-void read_accelerometer(int16_t *x, int16_t *y, int16_t *z)
-{
-    // Read 6 bytes of data for X, Y, Z
-    // Convert to 16-bit values
-    *x = (int16_t)((i2c_read(0x01) << 8) | i2c_read(0x02));
-    *y = (int16_t)((i2c_read(0x03) << 8) | i2c_read(0x04));
-    *z = (int16_t)((i2c_read(0x05) << 8) | i2c_read(0x06));
-}
-
-// I2C helper functions implementation
-static void i2c_init(void)
-{
-    // Enable clock to I2C and port
-    SIM->SCGC4 |= SIM_SCGC4_I2C0_MASK;
-    SIM->SCGC5 |= SIM_SCGC5_PORTE_MASK;
-
-    // Configure I2C pins
-    PORTE->PCR[24] = PORT_PCR_MUX(5); // SCL
-    PORTE->PCR[25] = PORT_PCR_MUX(5); // SDA
-
-    // Configure I2C
-    I2C0->F = 0x14;               // Set frequency divider for 100kHz
-    I2C0->C1 = I2C_C1_IICEN_MASK; // Enable I2C
-}
-
-static void i2c_write(uint8_t reg, uint8_t data)
-{
-    // I2C write implementation
-}
-
-static uint8_t i2c_read(uint8_t reg)
-{
-    // I2C read implementation
-    return 0;
-}
+    } else if ((z - prev_z) < -4
