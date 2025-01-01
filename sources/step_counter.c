@@ -11,33 +11,14 @@ volatile uint8_t is_active = 0;
 
 void init_hardware(void)
 {
-    // Initialize all peripherals
     init_systick();
-    init_accelerometer();
+    mma8451_init();
     init_leds();
     init_switches();
-    init_lcd();
+    lcd_init();
 
-    // Initial display
     display_steps(0);
     update_leds(0);
-}
-
-int main(void)
-{
-    init_hardware();
-
-    while (1)
-    {
-        if (is_active)
-        {
-            if (detect_step())
-            {
-                step_count++;
-                display_steps(step_count);
-            }
-        }
-    }
 }
 
 void toggle_counter(void)
