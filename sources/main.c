@@ -1,4 +1,6 @@
 #include "step_counter.h"
+#include "lcd.h"
+#include "mma8451.h"
 #include <MKL46Z4.h>
 
 int main(void)
